@@ -1,0 +1,33 @@
+To add float display support, do the following steps:
+
+ 1 - add "m" to linked libraries in project->configuration
+ 2 - change the stack pointer to be 4 bytes aligned by updating startup/startup_stm32f4xx.c
+ 	 (void *)&pulStack[STACK_SIZE-1],
+		 to
+	 (void (*)(void))((unsigned long)pulStack + sizeof(pulStack)),
+ 3 - change the size of stack to more than 4kb (4kb is needed by this implementation ; 
+     for example, set it to : 8kb in startup/startup_stm32f4xx.c
+     #define STACK_SIZE       0x00002000       /*!< Stack size (in Words)           */
+ 4 - include <stdio.h>
+ 5 - add this before calling printf for the first time :
+     /* Set unbuffered mode for stdout (newlib) */
+     setvbuf( stdout, 0, _IONBF, 0 );
+ 6 - implement _write function in syscalls/syscalls.c using USART_DEBUG for example
+ 
+ __attribute__ ((used))
+int _write(int file, char *ptr, int len)
+{
+	int counter = len;
+	for (; counter >0; counter--) {
+		/* Send the char */
+		USART_SendData(USART_DEBUG, (uint16_t)(*ptr));
+		/* Wait until transmission is complete */
+		while (USART_GetFlagStatus( USART_DEBUG, USART_FLAG_TC) == RESET) ;
+		/* Next char */
+		ptr++;
+	}
+  return len;
+}
+
+ 7 - YOU ARE GOOD TO GO NOW ;)
+   
